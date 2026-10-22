@@ -297,9 +297,9 @@ class FiniteFieldDLog(Scene):
 
         # --- Speed up: same y-scan process, much faster, for x = 4 ... 16 ---
         self.play(FadeOut(plug_header))
-        fast_header = Text("Continuing faster through x = 4 ... 16, testing all y:", font_size=18, color=GRAY_B)
-        fast_header.next_to(field_set, DOWN, buff=0.35, aligned_edge=LEFT)
-        self.play(FadeIn(fast_header))
+        #fast_header = Text("Continuing faster through x = 4 ... 16, testing all y:", font_size=18, color=GRAY_B)
+        #fast_header.next_to(field_set, DOWN, buff=0.35, aligned_edge=LEFT)
+        #self.play(FadeIn(fast_header))
 
         # Same stable-template idea as the slow loop: the words never move
         # or get recreated -- only the x, y, reduced-value and mark slots
@@ -317,7 +317,7 @@ class FiniteFieldDLog(Scene):
 
         row2 = VGroup(lbl_x_eq, ph_x, lbl_y_eq2, ph_y2, lbl_sq_eq2, ph_mod2, lbl_mod2, ph_mark2)
         row2.arrange(RIGHT, buff=0.08)
-        row2.next_to(fast_header, DOWN, buff=0.3, aligned_edge=LEFT)
+        row2.next_to(field_set, DOWN, buff=0.3, aligned_edge=LEFT)
 
         x_slot_pos = ph_x.get_center()
         y_slot_pos2 = ph_y2.get_center()
@@ -372,7 +372,7 @@ class FiniteFieldDLog(Scene):
         self.play(
             FadeOut(x_num), FadeOut(y_num2), FadeOut(mod_num2), FadeOut(mark_sym2),
             FadeOut(lbl_x_eq), FadeOut(lbl_y_eq2), FadeOut(lbl_sq_eq2), FadeOut(lbl_mod2),
-            FadeOut(fast_header),
+            
         )
 
         points = curve_points_mod(p, a, b)
