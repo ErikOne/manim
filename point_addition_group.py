@@ -167,7 +167,7 @@ class PointAdditionGroup(Scene):
         rule = MathTex(r"P + Q = -R", font_size=44, color=BLUE).move_to([PC, -1.95, 0])
         self.play(FadeIn(rule))
         self.play(Indicate(dotS, scale_factor=2.2, color=BLUE))
-        self.wait(3)
+        self.wait(10)
 
         # --- P + P: let Q slide onto P ---
         say("Now add P to itself: P + P.\nLet Q slide towards P \u2026", 0.5)
