@@ -1,4 +1,5 @@
-"""Scene 3: Any line through two points on the curve meets it at a third point.
+"""Scene 3: Any line through two points on the curve meets it at a third point (R), unless a and b
+violate 4a^3 + 27b^2 != 0. No formulas for R: only the condition and two counter-examples.
 Uses the Bitcoin curve y^2 = x^3 + 7. P and Q move along the curve, the secant line and the
 third intersection R follow live, and the camera zooms out automatically when R runs away.
 The text panel on the left is pinned to the camera frame so it stays readable while zooming."""
@@ -54,7 +55,7 @@ class ThirdIntersection(MovingCameraScene):
             *[axes.y_axis.get_number_mobject(v, font_size=20) for v in range(-8, 9, 2) if v],
         )
 
-        tp = ValueTracker(np.sqrt(3.625))   # P = (-1.5, +1.90)
+        tp = ValueTracker(-np.sqrt(3.625))   # P = (-1.5, -1.90)
         tq = ValueTracker(np.sqrt(3.5 ** 3 + 7))                     # Q = (3.5, +7.06)
         r_vis = ValueTracker(1.0)
         pad = ValueTracker(0.0)   # extra camera margin while P and Q wander
@@ -71,12 +72,18 @@ class ThirdIntersection(MovingCameraScene):
         def fit(f):
             pts = [P_pt(), Q_pt()]
             r = third_point(tp.get_value(), tq.get_value())
-            if r_vis.get_value() > 0.01 and r is not None and abs(r[0]) < 13 and abs(r[1]) < 40:
-                pts.append(R_pt())
+            if r_vis.get_value() > 0.01 and r is not None:
+                # R is clamped to a box and pulled back to the P-Q centre once it runs off to
+                # infinity, so the zoom changes smoothly right up to the vertical line.
+                mag = max(abs(r[0]), abs(r[1]), 1.0)
+                w = 1 - float(np.clip((np.log10(mag) - 2) / 1.5, 0, 1))
+                rc = np.array(scr(float(np.clip(r[0], -14, 14)), float(np.clip(r[1], -45, 45))))
+                c = (np.array(pts[0]) + np.array(pts[1])) / 2
+                pts.append(c + w * (rc - c))
             xs = [p[0] for p in pts] + [0.0, 5.8]
             pd = pad.get_value()
-            ys = [p[1] for p in pts] + [-3.4, 2.9, -34 * UNIT_Y * pd - 0.3, 22 * UNIT_Y * pd - 0.3]
-            m = 1.5 + 1.5 * pd
+            ys = [p[1] for p in pts] + [-3.4, 2.9, -30 * UNIT_Y * pd - 0.3, 42 * UNIT_Y * pd - 0.3]
+            m = 1.5 + 2.5 * pd
             W = max(FRAME_W0, (max(ys) - min(ys) + 2 * m) * 16 / 9,
                     (max(xs) - min(xs) + 2 * m) / (1 - PANEL_FRAC))
             f.set(width=W)
@@ -186,6 +193,8 @@ class ThirdIntersection(MovingCameraScene):
                     s = "Q = P"
                 elif v is None:
                     s = f"{name} = \\infty"
+                elif name == "R" and max(abs(v[0]), abs(v[1])) > 1e4:
+                    s = "R \\to \\infty"
                 elif name == "R" and r_vis.get_value() < 0.5:
                     s = f"{name} = {{?}}"
                 else:
@@ -230,56 +239,51 @@ class ThirdIntersection(MovingCameraScene):
         
 
         # --- P and Q wander over the curve, R follows: one caption only ---
-        say("Move P and Q anywhere on the curve.", 0.3)
+        say("Move P along the curve:\nR follows.", 0.3)
         self.play(FadeOut(numbers), pad.animate.set_value(1.0), run_time=2)
         P_START, Q_START = tp.get_value(), tq.get_value()
-        T_MOVE = 32.0
+        T_MOVE = 9.0
         smoothstep = lambda s: (lambda c: c * c * (3 - 2 * c))(float(np.clip(s, 0, 1)))
-        # Phase A: P sweeps the upper arm (Q parked on it). Phase B: P parked, Q sweeps the lower arm.
-        # Q crosses the vertical line tp + tq = 0 around t = 17.5 on purpose (that case is discussed later).
-        KF_P = [(0, P_START), (2.5, P_START), (4, 0.3), (10, 22.0), (14.5, 3.0), (16, 2.8), (29, 2.8), (32, P_START)]
-        KF_Q = [(0, Q_START), (2.5, 3.5), (16, 3.5), (19, -9.0), (23.5, -24.0), (28, -10.0), (29, -10.0), (32, Q_START)]
+        # P moves along the lower arm; Q is parked high on the upper arm so that P never crosses -Q (vertical line)
+        # and R stays inside the zoomed-out frame (R explodes when P approaches -Q).
+        KF_P = [(0, P_START), (1, -0.3), (4, -4.3), (6.5, -1.5), (T_MOVE, P_START)]
+        KF_Q = [(0, Q_START), (1.5, 25.0), (7.0, 25.0), (T_MOVE, Q_START)]
 
         def interp(kf, t):
             i = max(i for i in range(len(kf) - 1) if kf[i][0] <= t) if t < kf[-1][0] else len(kf) - 2
             (t0, v0), (t1, v1) = kf[i], kf[i + 1]
             return v0 + (v1 - v0) * smoothstep((t - t0) / (t1 - t0))
 
-        def wander(t):
-            return interp(KF_P, t), interp(KF_Q, t)
-
         def drive(_, alpha):
-            p, q = wander(alpha * T_MOVE)
-            tp.set_value(p)
-            tq.set_value(q)
+            tp.set_value(interp(KF_P, alpha * T_MOVE))
+            tq.set_value(interp(KF_Q, alpha * T_MOVE))
 
         self.play(UpdateFromAlphaFunc(Mobject(), drive), run_time=T_MOVE, rate_func=linear)
         self.play(FadeIn(numbers), pad.animate.set_value(0.0), run_time=2)
 
         # --- The problem: Q = -P ---
-        say("But look what happens when Q is\nthe mirror image of P: Q = \u2212P.", 1.5)
-        self.play(r_vis.animate.set_value(0.0), run_time=1)
-        self.play(tq.animate.set_value(-np.sqrt(3.625)), run_time=6, rate_func=smooth)
+        say("Now watch R when Q approaches\nthe mirror image of P: Q = \u2212P.", 1.5)
+        self.play(tq.animate.set_value(np.sqrt(3.625)), run_time=6, rate_func=smooth)
         self.wait(1.5)
         say("The line is vertical and meets the\ncurve only twice: P and \u2212P.", 4)
         say("There is no third point R!", 3)
         self.play(inf_vis.animate.set_value(1.0), run_time=1.5)
         say("Fix: add one extra point, the\n\u201cpoint at infinity\u201d, as the third\npoint of every vertical line.", 6)
         self.play(inf_vis.animate.set_value(0.0), run_time=1)
-        self.play(tq.animate.set_value(-np.sqrt(3.5 ** 3 + 7)), run_time=3, rate_func=smooth)
+        self.play(tq.animate.set_value(np.sqrt(3.5 ** 3 + 7)), run_time=3, rate_func=smooth)
         self.play(r_vis.animate.set_value(1.0), run_time=1)
 
         # --- The tangent: Q slides onto P ---
         say("What if Q slides onto P?", 0.5)
-        self.play(tp.animate.set_value(-4.0), run_time=3, rate_func=smooth)
-        self.play(tq.animate.set_value(-4.0), run_time=7, rate_func=smooth)
+        self.play(tp.animate.set_value(4.0), run_time=2, rate_func=smooth)
+        self.play(tq.animate.set_value(4.0), run_time=4, rate_func=smooth)
         say("The line becomes the tangent at P.\nIt also meets the curve in a third point R.", 0.5)
         self.play(Flash(R_pt(), color=ORANGE, flash_radius=0.5, line_length=0.25))
         self.play(Indicate(dotR, scale_factor=2.5, color=ORANGE))
         self.wait(2)
         say("So two points, or one point and\nits tangent: always a third.", 4)
 
-        # --- The formulas, and the condition on a and b ---
+        # --- The condition on a and b ---
         self.play(FadeOut(step), coord_vis.animate.set_value(0.0), run_time=1)
         step = None
         general = pin(MathTex("y^2 = x^3 + ax + b", font_size=44, color=ORANGE), [-4.2, 1.7, 0])
@@ -292,16 +296,6 @@ class ThirdIntersection(MovingCameraScene):
                 g.scale_to_fit_height(4.0)
             return pin(g, [-4.2, y, 0])
 
-        formulas = block(
-            Text("How to compute R exactly:", font_size=24),
-            MathTex(r"m = \frac{y_Q - y_P}{x_Q - x_P}", font_size=38),
-            MathTex(r"\text{tangent } (Q = P):\ m = \frac{3x_P^2 + a}{2y_P}", font_size=30),
-            MathTex(r"x_R = m^2 - x_P - x_Q", font_size=38),
-            MathTex(r"y_R = y_P + m\,(x_R - x_P)", font_size=38),
-        )
-        self.play(FadeIn(formulas))
-        self.wait(5)
-
         condition = block(
             Text("For this to work, a and b must satisfy:", font_size=24),
             MathTex(r"4a^3 + 27b^2 \neq 0", font_size=46, color=YELLOW),
@@ -309,8 +303,8 @@ class ThirdIntersection(MovingCameraScene):
             MathTex(r"\text{Bitcoin: } 4\cdot 0^3 + 27\cdot 7^2 = 1323 \neq 0 \ \checkmark", font_size=30),
             y=-0.9,
         )
-        self.play(FadeOut(formulas), FadeIn(condition))
-        self.wait(4)
+        self.play(FadeIn(condition))
+        self.wait(5)
 
         # --- Curves that violate the condition ---
         gone = [dotP, dotQ, dotR, labP, labQ, labR, line]
