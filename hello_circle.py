@@ -156,7 +156,6 @@ class HelloCircle(Scene):
         self.fold(sq, 4, origin0)
         self.play(sq[1].animate.set_color(GREEN))
         self.play(sq.animate.shift(SQ_START - end0), run_time=1.5)
-        square = sq
         self.wait(0.5)
 
         # ---------------------------------------------------------- square -> line -> triangle
@@ -182,7 +181,6 @@ class HelloCircle(Scene):
         self.fold(tri, 3, origin0)
         self.play(tri[1].animate.set_color(ORANGE))
         self.play(tri.animate.shift(TRI_START - end0), run_time=1.5)
-        triangle = tri
 
         caption = Text("Circle, square and triangle: all with perimeter 2π", font_size=30, color=GRAY_B)
         caption.move_to([0, -3.5, 0])
@@ -203,5 +201,4 @@ class HelloCircle(Scene):
         s_lbl[1].add_updater(lambda m: m.set_value(P * tr.get_value()).next_to(s_lbl[0], RIGHT, buff=0.15))
         self.play(FadeIn(dots), FadeIn(s_lbl))
         self.play(tr.animate.set_value(1), run_time=8, rate_func=linear)
-        self.play(tr.animate.set_value(0), run_time=8, rate_func=linear)
         self.wait(2)

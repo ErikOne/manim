@@ -569,7 +569,7 @@ class FiniteFieldDLog(Scene):
             cur = (x3, y3_sum)
 
         # --- Speed up: same process, much faster, continuing to 8G ---
-        speed_header = Text("Speeding up \u2014 same process, now quicker:", font_size=18, color=GRAY_B)
+        speed_header = Text("")
         speed_header.next_to(log_lines[-1], DOWN, buff=0.3, aligned_edge=LEFT)
         self.play(FadeIn(speed_header), FadeOut(wrap_note))
         self.wait(0.3)
@@ -687,7 +687,7 @@ class FiniteFieldDLog(Scene):
         ).arrange(DOWN, buff=0.3, aligned_edge=LEFT)
         avg_block.next_to(back_sub, DOWN, buff=0.3, aligned_edge=LEFT)
         self.play(FadeOut(reveal), FadeIn(avg_block))
-        self.wait(2)
+        self.wait(30)
 
         big_block = VGroup(
             Text("Real elliptic curves use far\nlarger keys, e.g. 256 bits:", font_size=20, color=GRAY_B, line_spacing=1.2),
